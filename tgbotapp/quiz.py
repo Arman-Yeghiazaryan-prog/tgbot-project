@@ -9,7 +9,6 @@ quiznum = settings.QUIZ_QUESTIONS_NUMBER
 
 class Quiz:
     def __init__(self, user_id, languagecode):
-        # random_terms = sample(terms_work.get_terms_for_quiz(user_id), k=quiznum)
         random_terms = sample(vocab_db.get_terms_for_quiz(user_id, languagecode), k=quiznum)
 
         self.qna = []

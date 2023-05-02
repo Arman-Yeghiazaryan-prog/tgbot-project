@@ -1,6 +1,7 @@
 from .models import Users, Armenian, English
 from django.conf import settings
 from django.db.models import Q
+from django.core.exceptions import ObjectDoesNotExist
 
 
 def get_terms_for_table(languagecode):
@@ -36,30 +37,30 @@ def write_term(new_term, new_definition, user_id, languagecode):
 
 
 def write_user(user_id):
-    user = Users(userid=user_id, numtestsen=0, avgresen=0.0, numtestsam=0, avgresam=0.0)
-    user.save()
+    try:
+        term = Users.objects.get(userid="user_id")
+    except ObjectDoesNotExist:
+        user = Users(userid=user_id, numtestsen=0, avgresen=0.0, numtestsam=0, avgresam=0.0)
+        user.save()
 
 
 def get_stats(user_id):
     terms = []
-    # for i, item in enumerate(Users.objects.filter(userid=user_id)):
-    for i, item in enumerate(Users.objects.filter(userid='admin')):
+    for i, item in enumerate(Users.objects.filter(userid=user_id)):
         terms.append([i + 1, item.numtestsen, item.avgresen, item.numtestsam, item.avgresam])
     return terms
 
 
 def update_stats(user_id, newres, languagecode):
-    terms = []
-    # for i, item in enumerate(Users.objects.filter(userid=user_id)):
-    for i, item in enumerate(Users.objects.filter(userid='admin')):
-        terms.append([i + 1, item.numtestsen, item.avgresen, item.numtestsam, item.avgresam])
-    oldterm = terms[0]
+    term = Users.objects.get(userid=user_id)
+    tmp1 = term.numtestsen
+    tmp2 = term.avgresen
+    tmp3 = term.numtestsam
+    tmp4 = term.avgresam
     if languagecode == settings.ENGLISH:
-        newterm = Users(userid=user_id, numtestsen=oldterm[1]+1,
-                        avgresen=((oldterm[2] * oldterm[1]) + newres) / (oldterm[1] + 1),
-                        numtestsam=oldterm[3], avgresam=oldterm[4])
+        term.numtestsen = tmp1+1
+        term.avgresen = ((tmp2 * tmp1) + newres) / (tmp1 + 1)
     elif languagecode == settings.ARMENIAN:
-        newterm = Users(userid=user_id, numtestsen=oldterm[1], avgresen=oldterm[2],
-                        numtestsam=oldterm[3]+1,
-                        avgresam=((oldterm[2] * oldterm[1]) + newres) / (oldterm[1] + 1))
-    newterm.save()
+        term.numtestsam = tmp3 + 1
+        term.avgresam = ((tmp4 * tmp3) + newres) / (tmp3 + 1)
+    term.save()

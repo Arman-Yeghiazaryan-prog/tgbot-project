@@ -12,7 +12,7 @@ class Armenian(models.Model):
     id = models.AutoField(db_column='ID', primary_key=True)  # Field name made lowercase.
     word = models.TextField(db_column='Word')  # Field name made lowercase.
     translation = models.TextField(db_column='Translation')  # Field name made lowercase.
-    source = models.ForeignKey('Users', models.DO_NOTHING, db_column='Source', to_field='userid')
+    source = models.TextField(db_column='Source')  # Field name made lowercase.
 
     class Meta:
         db_table = 'Armenian'
@@ -22,7 +22,7 @@ class English(models.Model):
     id = models.AutoField(db_column='ID', primary_key=True)  # Field name made lowercase.
     word = models.TextField(db_column='Word')  # Field name made lowercase.
     translation = models.TextField(db_column='Translation')  # Field name made lowercase.
-    source = models.ForeignKey('Users', models.DO_NOTHING, db_column='Source', to_field='userid')
+    source = models.TextField(db_column='Source')  # Field name made lowercase.
 
     class Meta:
         db_table = 'English'

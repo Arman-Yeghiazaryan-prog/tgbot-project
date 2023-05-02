@@ -6,6 +6,7 @@ from . import vocab_db
 from . import quiz
 from . import models
 from django.conf import settings
+from django.db.utils import IntegrityError
 import random
 import telebot
 from telebot import types
@@ -16,7 +17,7 @@ global quizzes
 global languages
 global adding
 
-
+NoLanguage = "Выберите язык перед тем как продолжить работу."
 KeyboardButtons = ["Добавить новое слово",
                    "Посмотреть доступные слова",
                    "Посмотреть статискиту тестов",
@@ -29,7 +30,10 @@ KeyboardButtons = ["Добавить новое слово",
 
 @bot.message_handler(commands=['start'])
 def welcome(message):
-    vocab_db.write_user(message.from_user.id)
+    try:
+        vocab_db.write_user(message.from_user.id)
+    except IntegrityError:
+        pass
     bot.send_message(message.chat.id,
                      "Добро пожаловать, {0.first_name}!\nЯ - <b>{1.first_name}</b>, "
                      "бот-словарь для помощи в изучении <b>иностранного языка</b>.\n"
@@ -65,8 +69,12 @@ def setlanguage(message):
 
 @bot.message_handler(commands=['quiz'])
 def quiz_starter(message):
-    if languages[message.from_user.id] == settings.NOT_CHOSEN:
-        bot.send_message(message.chat.id, "Выберите язык перед тем как пройти квиз.")
+    if 'languages' not in globals():
+        bot.reply_to(message, NoLanguage)
+    elif message.from_user.id not in languages:
+        bot.reply_to(message, NoLanguage)
+    elif languages[message.from_user.id] == settings.NOT_CHOSEN:
+        bot.send_message(message.chat.id, NoLanguage)
     else:
         global quizzes
         if 'quizzes' in globals():
@@ -85,11 +93,13 @@ def menu_handler(message):
         if message.text == KeyboardButtons[0]:
             global adding
             if 'adding' in globals():
-                adding.append = ([message.from_user.id, 1, 0, 'newword', 'newtrans'])
+                adding[message.from_user.id] = languages[message.from_user.id]
             else:
-                adding = []
-                adding.append = ([message.from_user.id, 1, 0, 'newword', 'newtrans'])
-            bot.send_message(message.chat.id, "Напишите новое слово.")
+                adding = dict()
+                adding[message.from_user.id] = languages[message.from_user.id]
+            bot.send_message(message.chat.id, "Напишите новое слово и перевод с маленькой "
+                                              "буквы в следующем формате:\n\n"
+                                              "<i>Слово</i> - <i>Перевод</i>\n", parse_mode='html')
         elif message.text == KeyboardButtons[1]:
             results = []
             words = vocab_db.get_terms_for_table(languages[message.from_user.id])
@@ -143,28 +153,21 @@ def menu_handler(message):
                              "Пожалуйста, выберите один из имеющихся языков.".format(
                                  message.from_user, bot.get_me()),
                              parse_mode='html', reply_markup=markup)
-    elif 'adding' in globals():
-        for usssr in adding:
-            if usssr[0] == message.from_user.id:
-                if usssr[1] == 1:
-                    usssr[3] = message.text
-                    usssr[1] = 0
-                    usssr[2] = 1
-                    bot.send_message(message.chat.id, "Напишите перевод слова.")
-                if usssr[2] == 1:
-                    usssr[4] = message.text
-                    vocab_db.write_term(usssr[3], usssr[4], message.from_user.id, languages[message.from_user.id])
-                    adding.remove(usssr)
-                    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-                    item1 = types.KeyboardButton(KeyboardButtons[0])
-                    item2 = types.KeyboardButton(KeyboardButtons[1])
-                    item3 = types.KeyboardButton(KeyboardButtons[2])
-                    item4 = types.KeyboardButton(KeyboardButtons[3])
+    elif ('adding' in globals()) and (message.from_user.id in adding):
+        term, trans = str(message.text).split(' - ')
+        vocab_db.write_term(term, trans, message.from_user.id, adding[message.from_user.id])
+        while message.from_user.id in adding:
+            del adding[message.from_user.id]
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+        item1 = types.KeyboardButton(KeyboardButtons[0])
+        item2 = types.KeyboardButton(KeyboardButtons[1])
+        item3 = types.KeyboardButton(KeyboardButtons[2])
+        item4 = types.KeyboardButton(KeyboardButtons[3])
 
-                    markup.add(item1, item2, item3, item4)
-                    bot.send_message(message.chat.id, "Новое слово внесено.\n"
-                                                      "Чем желаете заняться?",
-                                     reply_markup=markup)
+        markup.add(item1, item2, item3, item4)
+        bot.send_message(message.chat.id, "Новое слово внесено.\n"
+                                          "Чем желаете заняться?",
+                         reply_markup=markup)
     elif 'quizzes' not in globals():
         bot.reply_to(message, 'Пользуйтесь меню для работы с ботом.')
     elif message.from_user.id not in quizzes:
@@ -173,9 +176,9 @@ def menu_handler(message):
         try:
             term = quizzes[message.from_user.id].next_qna()[1]
             bot.send_message(message.chat.id, term)
-            quizzes[message.from_user.id].record_user_answer(message.text)
+            quizzes[message.from_user.id].record_user_answer(message.text.lower())
         except StopIteration:
-            quizzes[message.from_user.id].record_user_answer(message.text)
+            quizzes[message.from_user.id].record_user_answer(message.text.lower())
             mess, res = quizzes[message.from_user.id].check_quiz()
             results = " ".join(mess)
             vocab_db.update_stats(message.from_user.id, res, languages[message.from_user.id])
