@@ -59,8 +59,8 @@ def update_stats(user_id, newres, languagecode):
     tmp4 = term.avgresam
     if languagecode == settings.ENGLISH:
         term.numtestsen = tmp1+1
-        term.avgresen = ((tmp2 * tmp1) + newres) / (tmp1 + 1)
+        term.avgresen = 100*(((tmp2 * tmp1) + newres) / (tmp1 + 1)) / settings.QUIZ_QUESTIONS_NUMBER
     elif languagecode == settings.ARMENIAN:
         term.numtestsam = tmp3 + 1
-        term.avgresam = ((tmp4 * tmp3) + newres) / (tmp3 + 1)
+        term.avgresam = 100*(((tmp4 * tmp3) + newres) / (tmp3 + 1)) / settings.QUIZ_QUESTIONS_NUMBER
     term.save()
