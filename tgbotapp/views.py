@@ -112,8 +112,8 @@ def menu_handler(message):
             stats = res[0]
             bot.send_message(message.chat.id,
                              "Ваша статистика:\n\n"
-                             "Английский: {0} тестов, средний результат - {1}\n\n"
-                             "Армянский: {2} тестов, средний результат - {3}"
+                             "Английский: {0} тестов, средний результат - {1}%\n\n"
+                             "Армянский: {2} тестов, средний результат - {3}%"
                              .format(stats[1], stats[2], stats[3], stats[4]))
         elif message.text == KeyboardButtons[3]:
             bot.send_message(message.chat.id, "Для изменения языка используйте команду /setlanguage.")
